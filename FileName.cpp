@@ -26,13 +26,16 @@ public:
 	// 문자열 뒤에 다른 문자열 붙이기
 	void append(const char ch);
 	void append(const char* str);
+	void append(const MyString& str);
 
 	// 문자열 내에 포함되어 있는 문자열 구하기
-	int find(const MyString& ref) const; // 이거 하나만 있으면 아래 둘은 필요없긴함
+	int find(const MyString& str) const; // 이거 하나만 있으면 아래 둘은 필요없긴함
 	int find(const char ch) const;
 	int find(const char* str) const;
 
 	// 문자열이 같은지 비교
+	int compare(char ch) const;
+	int compare(const char* str) const;
 	int compare(const MyString& ref) const;
 	bool operator==(const MyString& ref) const;
 
@@ -108,6 +111,29 @@ MyString::MyString(const char* str):size(strlen(str)),capacity(size + 1),data(ne
 }
 
 // 비교해서 사전순으로 뒤에오면 1반환
+int MyString::compare(char ch) const {
+	if (size == 0) return -1;
+	if (data[0] == ch) {
+		if (size == 1) return 0;
+		return 1;
+	}
+	if (data[0] > ch)	return 1; // MyString이 사전순으로 뒤에 오는 경우
+	return -1; //MyString이 사전순으로 앞에 오는 경우
+}
+int MyString::compare(const char* str) const {
+	if (str == nullptr) return 1; // 이걸 따로 예외처리해야함
+	size_t argStrLen = strlen(str);
+	size_t minLen = min(size, argStrLen); // 두 문자열중 작은 길이를 선정
+
+	// 범위에 맞게 순회하며 사전순으로 맞지 않는게 있는지 찾음
+	for (size_t i = 0; i < minLen; ++i) {
+		if (data[i] > str[i]) return 1; // 현 문자열이 사전순으로 뒤에 오는 경우
+		if (data[i] < str[i]) return -1; // 현 문자열이 사전순으로 앞에 오는 경우
+	}
+	if (size > argStrLen) return 1;
+	if (size < argStrLen) return -1;
+	return 0; //같은 string임
+}
 int MyString::compare(const MyString& ref) const {
 	size_t minLen = min(size, ref.size);
 
@@ -174,6 +200,35 @@ void MyString::append(const char* str) {
 	data[size] = '\0';
 	return;
 }
+void MyString::append(const MyString& str) {
+	if (str.size == 0) return;
+
+	// self append 방지
+	if (this == &str) {
+		MyString temp(str);
+		return append(temp); //double free가 발생할 수 있으므로 임시객체를 생성하여 인자로
+	}
+
+	if (size + str.size >= capacity) {
+		size_t newCapacity = std::max(capacity * 2, size + str.size + 1);
+		char* newData = new char[newCapacity];
+		for (size_t i = 0; i < size; ++i) {
+			newData[i] = data[i];
+		}
+
+		delete[] data;
+		data = newData;
+		capacity = newCapacity;
+	}
+
+	// 이어붙이기
+	for (size_t i = 0; i < str.size; ++i) {
+		data[size + i] = str.data[i];
+	}
+	size += str.size;
+	data[size] = '\0';
+	return;
+}
 
 // 문자열 내에 포함되어 있는 문자열의 시작 index를 반환
 int MyString::find(const char ch) const {
@@ -190,7 +245,6 @@ int MyString::find(const char* str) const {
 	if (targetLen == 0) return 0;
 
 	if (targetLen > size) return string::npos; // 찾으려는 문자열이 더 큰 경우
-
 	//MyString newStr{ str }; // 생성자로 비교 문자열 생성
 
 	for (size_t i = 0; i < size - targetLen + 1; ++i) {
@@ -211,20 +265,32 @@ int MyString::find(const char* str) const {
 	}
 	return string::npos;
 }
+int MyString::find(const MyString& str) const {
+	if (str.data[0] == '\0') return 0;
+	if (size < str.size) return string::npos; //못찾음
+	
+	// index 1부터 비교 -> 너 잘했을 듯
+	for (size_t i = 0; i < size - str.size + 1; ++i) { // size - str.size는 문자열 개수 차이, +1을 해야 nullptr까지 구분
+		size_t j = 0;
+		for (; j < str.size; ++j) {
+			if (data[i + j] != str.data[j])
+				break;
+		}
+		if (j == str.size)	return i;
+	}
+	return string::npos;
+}
 
 // 문자열 크기 비교(사전 순)
 bool MyString::operator<(const MyString& ref) const {
-	if ()
+	return compare(ref) < 0;
 }
-
 bool MyString::operator<=(const MyString& ref) const {
-
+	return compare(ref) <= 0;
 }
-
 bool MyString::operator>(const MyString& ref) const {
-
+	return compare(ref) > 0;
 }
-
 bool MyString::operator>=(const MyString& ref) const {
-
+	return compare(ref) >= 0;
 }
